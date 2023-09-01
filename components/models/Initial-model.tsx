@@ -1,8 +1,9 @@
 "use client";
-
+import axios from "axios";
 import * as z from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { FormProvider, useForm } from "react-hook-form";
+import { useEffect, useState } from "react";
 import {
     Dialog,
     DialogContent,
@@ -31,10 +32,17 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { FileUpload } from "@/components/file-upload";
 import { useRouter } from "next/navigation";
+import { FileUpload } from "@/components/file-upload";
 
 export const InitialModel = () => {
+    const [isMounted, setIsMounted] = useState(false);
+
+    const router = useRouter();
+    useEffect(() => {
+        setIsMounted(true);
+    }, []);
+
     const form = useForm({
         resolver: zodResolver(formSchema),
         defaultValues: {
@@ -44,8 +52,23 @@ export const InitialModel = () => {
     });
 
     const isLoading = form.formState.isSubmitting;
+
+ 
     const onSubmit = async (values: z.infer<typeof formSchema>) => {
-        console.log(values);
+       try{
+        await axios.post("/api/servers", values);
+
+        form.reset();
+        router.refresh();
+        window.location.reload();
+
+       } catch (error) {
+        console.log(error);
+       }
+    }
+
+    if(!isMounted){
+        return null;
     }
     return (
         <Dialog open>
@@ -55,15 +78,29 @@ export const InitialModel = () => {
                         Customize server
                     </DialogTitle>
                     <DialogDescription className="text-center text-zinc-500">
-                        Give your server a personlaity with a name and an image.
+                        Give your server a personality with a name and an image. You can always change later.
 
                     </DialogDescription>
                 </DialogHeader>
                 <Form {...form}>
                     <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-                        <div className="space-y-8">
+                        <div className="space-y-8 px-6">
                             <div className="flex items-center justify-center text-center">
-                                TODO: Image Upload
+
+                            <FormField 
+                                control = {form.control}
+                                name = "imageUrl"
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <FormControl>
+                                           <FileUpload
+                                                endpoint="serverImage"
+                                                value={field.value}
+                                                onChange={field.onChange}
+                                           />
+                                        </FormControl>
+                                    </FormItem>
+                                )}/>
                             </div>
 
                             <FormField
@@ -80,12 +117,21 @@ export const InitialModel = () => {
                                                 disabled={isLoading}
                                                 className="bg-zinc-300/50 border-0 focus-visible:ring-0 text-black focus-visible:ring-offset-0"
                                                 placeholder="Enter Server Name"
+                                                {...field}
                                             />
                                         </FormControl>
+
+                                        <FormMessage />
                                     </FormItem>
                                 )}
                             />
                         </div>
+                        <DialogFooter className="bg-gray-100 px-6 py-4">
+                            <Button variant="primary" disabled={isLoading}>
+                                    Create
+                            </Button>
+
+                        </DialogFooter>
                     </form>
                 </Form>
             </DialogContent>
